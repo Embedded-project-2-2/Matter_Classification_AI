@@ -21,5 +21,15 @@
       <br>
       <a href="https://github.com/lunatic280">홍지민</a>
     </td>
+    <td>
+      <a href="https://github.com/haemul"><img height="100px" width="100px" src="https://avatars.githubusercontent.com/u/91894303?v=4"></a>
+      <br>
+      <a href="https://github.com/haemul">배상진k</a>
+    </td>
+    <td>
+      <a href="https://github.com/"><img height="100px" width="100px" src=""></a>
+      <br>
+      <a href="https://github.com/">김병현</a>
+    </td>
   </tr>
 </table>
