@@ -17,10 +17,9 @@
 <table>
   <tr height="140px">
     <td width="130px">
-    <td>
       <a href="https://github.com/lunatic280"><img height="100px" width="100px" src="https://avatars.githubusercontent.com/u/82097844?v=4"></a>
       <br>
-      <a href="https://github.com/lunatic280">yunhyeon</a>
+      <a href="https://github.com/lunatic280">홍지민</a>
     </td>
   </tr>
 </table>
