@@ -27,9 +27,9 @@
       <a href="https://github.com/haemul">배상진k</a>
     </td>
     <td>
-      <a href="https://github.com/"><img height="100px" width="100px" src=""></a>
+      <a href="https://github.com/kimbyounghyun"><img height="100px" width="100px" src="https://avatars.githubusercontent.com/u/82097856?v=4"></a>
       <br>
-      <a href="https://github.com/">김병현</a>
+      <a href="https://github.com/kimbyounghyun">김병현</a>
     </td>
   </tr>
 </table>
