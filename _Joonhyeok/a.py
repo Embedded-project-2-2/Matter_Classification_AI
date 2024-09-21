@@ -4,8 +4,8 @@ import numpy as np
 from tensorflow.keras.preprocessing import image
 
 # 이미지 크기 및 배치 크기 설정
-img_height = 180
-img_width = 180
+img_height = 244
+img_width = 244
 batch_size = 32
 
 # 학습용 데이터셋 로드
