@@ -77,7 +77,7 @@ print(f"Validation accuracy: {accuracy}")
 # 새로운 이미지 예측
 img = image.load_img('./Classification_Image/페트병.jpg', target_size=(img_height, img_width))
 img_array = image.img_to_array(img)
-img_array = tf.expand_dims(img_array, 1)                                  # 배치 차원 추가
+img_array = tf.expand_dims(img_array, 0)                                  # 배치 차원 추가
 predictions = model.predict(img_array)
 predicted_class = np.argmax(predictions)
 print(f"Predicted class: {class_names[predicted_class]}")
