@@ -11,7 +11,7 @@ batch_size = 32
 # 학습용 데이터셋 로드
 train_ds = tf.keras.preprocessing.image_dataset_from_directory(
   "./image_data/",                                                      # 이미지 폴더 경로
-  validation_split=0.2,                                                 # 20%는 검증용 데이터로 사용
+  validation_split=0.1,                                                 # 20%는 검증용 데이터로 사용
   subset="training",                                                    # 학습용 데이터로 설정
   seed=123,                                                             # 랜덤 시드 고정
   image_size=(img_height, img_width),                                   # 이미지 크기 조정
@@ -20,7 +20,7 @@ train_ds = tf.keras.preprocessing.image_dataset_from_directory(
 # 검증용 데이터셋 로드
 val_ds = tf.keras.preprocessing.image_dataset_from_directory(
   "./image_data/",
-  validation_split=0.2,
+  validation_split=0.1,
   subset="validation",
   seed=123,
   image_size=(img_height, img_width),
