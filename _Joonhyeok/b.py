@@ -1,223 +1,146 @@
-import matplotlib.pyplot as plt
-import numpy as np
-import os
 import tensorflow as tf
+from tensorflow.keras import layers, models
+import numpy as np
+from tensorflow.keras.preprocessing import image
+from tensorflow.keras.models import Sequential
+from functools import partial
+import matplotlib.pyplot as plt
 
-_URL = 'https://storage.googleapis.com/mledu-datasets/cats_and_dogs_filtered.zip'
-path_to_zip = tf.keras.utils.get_file('cats_and_dogs.zip', origin=_URL, extract=True)
-PATH = os.path.join(os.path.dirname(path_to_zip), 'cats_and_dogs_filtered')
+# 이미지 크기 및 배치 크기 설정
+img_height = 244
+img_width = 244
+batch_size = 32
 
-train_dir = os.path.join(PATH, 'train')
-validation_dir = os.path.join(PATH, 'validation')
 
-BATCH_SIZE = 32
-IMG_SIZE = (160, 160)
+# 데이터셋 로드
+train_ds = tf.keras.preprocessing.image_dataset_from_directory(
+    "./image_data/",
+    validation_split=0.2,
+    subset="training",
+    seed=123,
+    image_size=(img_height, img_width),
+    batch_size=batch_size
+)
 
-train_dataset = tf.keras.utils.image_dataset_from_directory(train_dir,
-                                                            shuffle=True,
-                                                            batch_size=BATCH_SIZE,
-                                                            image_size=IMG_SIZE)
+val_ds = tf.keras.preprocessing.image_dataset_from_directory(
+    "./image_data/",
+    validation_split=0.2,
+    subset="validation",
+    seed=123,
+    image_size=(img_height, img_width),
+    batch_size=batch_size
+)
 
-validation_dataset = tf.keras.utils.image_dataset_from_directory(validation_dir,
-                                                                 shuffle=True,
-                                                                 batch_size=BATCH_SIZE,
-                                                                 image_size=IMG_SIZE)
+class_names = train_ds.class_names
+print(class_names)
 
-class_names = train_dataset.class_names
 
-plt.figure(figsize=(10, 10))
-for images, labels in train_dataset.take(1):
-  for i in range(9):
-    ax = plt.subplot(3, 3, i + 1)
-    plt.imshow(images[i].numpy().astype("uint8"))
-    plt.title(class_names[labels[i]])
-    plt.axis("off")
-
-val_batches = tf.data.experimental.cardinality(validation_dataset)
-test_dataset = validation_dataset.take(val_batches // 5)
-validation_dataset = validation_dataset.skip(val_batches // 5)
-
-print('Number of validation batches: %d' % tf.data.experimental.cardinality(validation_dataset))
-print('Number of test batches: %d' % tf.data.experimental.cardinality(test_dataset))
-
-AUTOTUNE = tf.data.AUTOTUNE
-
-train_dataset = train_dataset.prefetch(buffer_size=AUTOTUNE)
-validation_dataset = validation_dataset.prefetch(buffer_size=AUTOTUNE)
-test_dataset = test_dataset.prefetch(buffer_size=AUTOTUNE)
-
-data_augmentation = tf.keras.Sequential([
-  tf.keras.layers.RandomFlip('horizontal'),
-  tf.keras.layers.RandomRotation(0.2),
+# 데이터 증식을 위한 레이어
+data_augmentation = Sequential([
+  layers.RandomFlip("horizontal", input_shape=(img_height, img_width, 3)),  # 좌우 반전
+  layers.RandomRotation(0.1),    # 회전
+  layers.RandomZoom(0.1),        # 확대/축소
+  layers.RandomBrightness(0.1)   # 밝기 조절
 ])
 
-# for image, _ in train_dataset.take(1):
-#   plt.figure(figsize=(10, 10))
-#   first_image = image[0]
-#   for i in range(9):
-#     ax = plt.subplot(3, 3, i + 1)
-#     augmented_image = data_augmentation(tf.expand_dims(first_image, 0))
-#     plt.imshow(augmented_image[0] / 255)
-#     plt.axis('off')
 
-preprocess_input = tf.keras.applications.mobilenet_v2.preprocess_input
-rescale = tf.keras.layers.Rescaling(1./127.5, offset=-1)
+# 정규화: 픽셀 값을 [0, 255] -> [0, 1] 범위로 변환
+normalization_layer = layers.Rescaling(1./255)
 
-# Create the base model from the pre-trained model MobileNet V2
-IMG_SHAPE = IMG_SIZE + (3,)
-base_model = tf.keras.applications.MobileNetV2(input_shape=IMG_SHAPE,
-                                               include_top=False,
-                                               weights='imagenet')
 
-# Create the base model from the pre-trained model MobileNet V2
-IMG_SHAPE = IMG_SIZE + (3,)
-base_model = tf.keras.applications.MobileNetV2(input_shape=IMG_SHAPE,
-                                               include_top=False,
-                                               weights='imagenet')
+# 학습 데이터에 전처리 및 증식 적용
+train_ds = train_ds.map(lambda x, y: (normalization_layer(x), y))
+train_ds = train_ds.map(lambda x, y: (data_augmentation(x), y))
 
-image_batch, label_batch = next(iter(train_dataset))
-feature_batch = base_model(image_batch)
-print(feature_batch.shape)
 
+# 검증 데이터에도 정규화 적용 (증식은 학습 데이터에만 적용)
+val_ds = val_ds.map(lambda x, y: (normalization_layer(x), y))
+
+
+# 데이터셋을 성능 향상을 위해 Prefetch 적용
+AUTOTUNE = tf.data.AUTOTUNE
+train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
+val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
+
+
+# EfficientNetB0 모델 불러오기 (사전 훈련된 가중치 사용)
+base_model = tf.keras.applications.EfficientNetB0(
+    include_top=False,
+    weights='imagenet',
+    input_shape=(img_height, img_width, 3)
+)
+
+
+# 모델의 일부 층은 고정
 base_model.trainable = False
 
-# Let's take a look at the base model architecture
-base_model.summary()
 
-global_average_layer = tf.keras.layers.GlobalAveragePooling2D()
-feature_batch_average = global_average_layer(feature_batch)
-print(feature_batch_average.shape)
+# 전체 모델 구성
+model = models.Sequential([
+    data_augmentation,
+    base_model,
+    layers.GlobalAveragePooling2D(),
+    layers.Dense(128, activation='relu'),
+    layers.Dropout(0.5),
+    layers.Dense(len(class_names), activation='softmax')
+])
 
-prediction_layer = tf.keras.layers.Dense(1)
-prediction_batch = prediction_layer(feature_batch_average)
-print(prediction_batch.shape)
 
-inputs = tf.keras.Input(shape=(160, 160, 3))
-x = data_augmentation(inputs)
-x = preprocess_input(x)
-x = base_model(x, training=False)
-x = global_average_layer(x)
-x = tf.keras.layers.Dropout(0.2)(x)
-outputs = prediction_layer(x)
-model = tf.keras.Model(inputs, outputs)
-
-base_learning_rate = 0.0001
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=base_learning_rate),
-              loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+base_model.trainable = True  # 미세 조정할 때 True로 설정
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
+              loss='sparse_categorical_crossentropy',
               metrics=['accuracy'])
 
-model.summary()
 
-len(model.trainable_variables)
+# EarlyStopping과 LearningRateScheduler 정의
+early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
+lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
+    lambda epoch: 1e-5 * 10 ** (epoch / 20)
+)
 
-initial_epochs = 10
 
-loss0, accuracy0 = model.evaluate(validation_dataset)
+# 모델 학습 (콜백 추가)
+history = model.fit(
+    train_ds,
+    validation_data=val_ds,
+    epochs=2,  
+    callbacks=[early_stopping, lr_scheduler]  # 콜백 추가
+)
 
-print("initial loss: {:.2f}".format(loss0))
-print("initial accuracy: {:.2f}".format(accuracy0))
 
-history = model.fit(train_dataset,
-                    epochs=initial_epochs,
-                    validation_data=validation_dataset)
+# 검증 정확도 확인
+loss, accuracy = model.evaluate(val_ds)
+print(f"Validation accuracy: {accuracy}")
 
-acc = history.history['accuracy']
-val_acc = history.history['val_accuracy']
+model.summary()  # 모델의 구조
 
-loss = history.history['loss']
-val_loss = history.history['val_loss']
 
-plt.figure(figsize=(8, 8))
-plt.subplot(2, 1, 1)
-plt.plot(acc, label='Training Accuracy')
-plt.plot(val_acc, label='Validation Accuracy')
-plt.legend(loc='lower right')
-plt.ylabel('Accuracy')
-plt.ylim([min(plt.ylim()),1])
-plt.title('Training and Validation Accuracy')
+# 새로운 이미지 예측
+img = image.load_img('./Classification_image/찌그러진캔.jpg', target_size=(img_height, img_width))
+img_array = image.img_to_array(img)
+img_array = tf.expand_dims(img_array, 0)  # 배치 차원 추가
+predictions = model.predict(img_array)
 
-plt.subplot(2, 1, 2)
-plt.plot(loss, label='Training Loss')
-plt.plot(val_loss, label='Validation Loss')
-plt.legend(loc='upper right')
-plt.ylabel('Cross Entropy')
-plt.ylim([0,1.0])
-plt.title('Training and Validation Loss')
+
+# 예측된 클래스와 확률
+predicted_class = np.argmax(predictions)
+predicted_probability = predictions[0][predicted_class]
+
+print(f"Predicted class: {class_names[predicted_class]}")
+print(f"Probability: {predicted_probability * 100:.2f}%")
+
+
+plt.plot(history.history['loss'])
 plt.xlabel('epoch')
+plt.ylabel('loss')
 plt.show()
 
-base_model.trainable = True
 
-# Let's take a look to see how many layers are in the base model
-print("Number of layers in the base model: ", len(base_model.layers))
+# 손실
 
-# Fine-tune from this layer onwards
-fine_tune_at = 100
-
-# Freeze all the layers before the `fine_tune_at` layer
-for layer in base_model.layers[:fine_tune_at]:
-  layer.trainable = False
-
-model.compile(loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
-              optimizer = tf.keras.optimizers.RMSprop(learning_rate=base_learning_rate/10),
-              metrics=['accuracy'])
-
-model.summary()
-
-len(model.trainable_variables)
-
-fine_tune_epochs = 10
-total_epochs =  initial_epochs + fine_tune_epochs
-
-history_fine = model.fit(train_dataset,
-                         epochs=total_epochs,
-                         initial_epoch=history.epoch[-1],
-                         validation_data=validation_dataset)
-
-acc += history_fine.history['accuracy']
-val_acc += history_fine.history['val_accuracy']
-
-loss += history_fine.history['loss']
-val_loss += history_fine.history['val_loss']
-
-plt.figure(figsize=(8, 8))
-plt.subplot(2, 1, 1)
-plt.plot(acc, label='Training Accuracy')
-plt.plot(val_acc, label='Validation Accuracy')
-plt.ylim([0.8, 1])
-plt.plot([initial_epochs-1,initial_epochs-1],
-          plt.ylim(), label='Start Fine Tuning')
-plt.legend(loc='lower right')
-plt.title('Training and Validation Accuracy')
-
-plt.subplot(2, 1, 2)
-plt.plot(loss, label='Training Loss')
-plt.plot(val_loss, label='Validation Loss')
-plt.ylim([0, 1.0])
-plt.plot([initial_epochs-1,initial_epochs-1],
-         plt.ylim(), label='Start Fine Tuning')
-plt.legend(loc='upper right')
-plt.title('Training and Validation Loss')
+plt.plot(history.history['accuracy'])
 plt.xlabel('epoch')
+plt.ylabel('accuracy')
 plt.show()
 
-loss, accuracy = model.evaluate(test_dataset)
-print('Test accuracy :', accuracy)
-
-# Retrieve a batch of images from the test set
-image_batch, label_batch = test_dataset.as_numpy_iterator().next()
-predictions = model.predict_on_batch(image_batch).flatten()
-
-# Apply a sigmoid since our model returns logits
-predictions = tf.nn.sigmoid(predictions)
-predictions = tf.where(predictions < 0.5, 0, 1)
-
-print('Predictions:\n', predictions.numpy())
-print('Labels:\n', label_batch)
-
-plt.figure(figsize=(10, 10))
-for i in range(9):
-  ax = plt.subplot(3, 3, i + 1)
-  plt.imshow(image_batch[i].astype("uint8"))
-  plt.title(class_names[predictions[i]])
-  plt.axis("off")
+model.save('accuracy_85.keras')
