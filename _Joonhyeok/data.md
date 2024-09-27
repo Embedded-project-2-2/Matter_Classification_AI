@@ -27,4 +27,5 @@ Validation Accuracy: 52.48%
 # EfficientNetB0 model
 ```
 Final validation accuracy: 47.74%
+Validation accuracy: 0.15730337798595428
 ```

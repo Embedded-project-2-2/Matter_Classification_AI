@@ -15,20 +15,18 @@ batch_size = 32
 # 데이터셋 로드
 train_ds = tf.keras.preprocessing.image_dataset_from_directory(
     "./image_data/",
-    validation_split=0.2,
+    validation_split=0.1,
     subset="training",
     seed=123,
     image_size=(img_height, img_width),
-    batch_size=batch_size
 )
 
 val_ds = tf.keras.preprocessing.image_dataset_from_directory(
     "./image_data/",
-    validation_split=0.2,
+    validation_split=0.1,
     subset="validation",
     seed=123,
     image_size=(img_height, img_width),
-    batch_size=batch_size
 )
 
 class_names = train_ds.class_names
@@ -38,7 +36,7 @@ print(class_names)
 # 데이터 증식을 위한 레이어
 data_augmentation = Sequential([
   layers.RandomFlip("horizontal", input_shape=(img_height, img_width, 3)),  # 좌우 반전
-  layers.RandomRotation(0.1),    # 회전
+  layers.RandomRotation(0.25),    # 회전
   layers.RandomZoom(0.1),        # 확대/축소
   layers.RandomBrightness(0.1)   # 밝기 조절
 ])
@@ -81,7 +79,7 @@ model = models.Sequential([
     base_model,
     layers.GlobalAveragePooling2D(),
     layers.Dense(128, activation='relu'),
-    layers.Dropout(0.5),
+    layers.Dropout(0.2),
     layers.Dense(len(class_names), activation='softmax')
 ])
 
@@ -103,7 +101,7 @@ lr_scheduler = tf.keras.callbacks.LearningRateScheduler(
 history = model.fit(
     train_ds,
     validation_data=val_ds,
-    epochs=2,  
+    epochs=30,  
     callbacks=[early_stopping, lr_scheduler]  # 콜백 추가
 )
 
