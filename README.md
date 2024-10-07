@@ -33,3 +33,9 @@
     </td>
   </tr>
 </table>
+
+
+
+```
+pip install -r requirements.txt
+```
