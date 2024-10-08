@@ -42,7 +42,7 @@ pip install -r requirements.txt
 ```
 
 ## 서비스 제공 Repository
-https://github.com/Embedded-project-2-2/beetest
+https://github.com/Embedded-project-2-2/provide_service_classification_AI
 
 ## Base Repository
 ##### (확인 불필요) - 해당 레포지토리에서가 아닌 개인 Repository 또는 Organization Repository 주소입니다.
