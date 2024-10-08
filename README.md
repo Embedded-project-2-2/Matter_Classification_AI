@@ -47,7 +47,12 @@ https://github.com/Embedded-project-2-2/beetest
 ## Base Repository
 ##### (확인 불필요) - 해당 레포지토리에서가 아닌 개인 Repository 또는 Organization Repository 주소입니다.
 https://github.com/Embedded-project-2-2/flaskserver_ai
+
 https://github.com/Embedded-project-2-2/java-springboot
+
 https://github.com/Embedded-project-2-2/References
+
 https://github.com/beejh02/CLIP
+
 https://github.com/beejh02/TensorFlow_ex
+
